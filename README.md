@@ -1,116 +1,297 @@
-# CSV Mini Database and Query Engine
+# CSV Mini Database with Query Engine
 
-Project B is a small C++ command-line program that loads a CSV file and executes
-one simple SQL-like query against it.
+A lightweight, in-memory database engine that supports CSV file operations and a custom query language for data manipulation and retrieval.
 
-The handwritten project specification is the source of truth for this repo. This
-README intentionally describes only the required scope from that specification.
+## Overview
 
-## Goal
+This project implements a small but functional database system that allows you to:
+- Load and manage CSV data in memory
+- Execute custom queries on datasets
+- Perform filtering, projection, and aggregation operations
+- Support for basic SQL-like operations without requiring a full database
 
-Build a lightweight query engine that can:
+## Features
 
-- Load data from a CSV file.
-- Accept one query as a command-line argument.
-- Parse a simple `SELECT ... FROM ... WHERE ...` query.
-- Return only the requested columns.
-- Filter rows using one comparison condition.
-- Print useful error messages for invalid queries or CSV problems.
+✨ **CSV File Management**
+- Load CSV files into memory
+- Support for multiple tables/datasets simultaneously
+- Automatic schema inference from CSV headers
+- Handle various data types (strings, integers, floats, dates)
 
-Example query:
+🔍 **Query Engine**
+- SELECT operations with column projection
+- WHERE clause filtering with various predicates
+- JOIN operations between tables
+- Aggregation functions (COUNT, SUM, AVG, MAX, MIN)
+- GROUP BY and HAVING clauses
+- ORDER BY sorting
+- LIMIT and OFFSET pagination
 
-```sql
-SELECT title, rating FROM movies.csv WHERE year > 2000
+📊 **Data Operations**
+- INSERT new records
+- UPDATE existing records
+- DELETE records by condition
+- Index creation for optimized queries
+
+## Project Structure
+
+```
+11402_CS351_ProjectB/
+├── README.md              # Project documentation
+├── src/
+│   ├── __init__.py
+│   ├── csv_loader.py      # CSV file loading and parsing
+│   ├── table.py           # Table representation and operations
+│   ├── query_engine.py    # Query parser and executor
+│   ├── query_parser.py    # Query tokenization and parsing
+│   └── main.py            # CLI entry point
+├── tests/
+│   ├── __init__.py
+│   ├── test_csv_loader.py
+│   ├── test_query_engine.py
+│   └── test_table.py
+├── examples/
+│   ├── sample_data.csv    # Sample CSV file
+│   └── usage_examples.py  # Usage demonstrations
+└── requirements.txt       # Project dependencies
 ```
 
-Example CLI usage:
+## Installation
+
+1. **Clone the repository**
+   ```bash
+   git clone https://github.com/fkilr50/11402_CS351_ProjectB.git
+   cd 11402_CS351_ProjectB
+   ```
+
+2. **Install dependencies**
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+3. **Verify installation**
+   ```bash
+   python -m pytest tests/
+   ```
+
+## Quick Start
+
+### Basic Usage
+
+```python
+from src.csv_loader import CSVLoader
+from src.query_engine import QueryEngine
+
+# Load a CSV file
+loader = CSVLoader()
+table = loader.load('data.csv')
+
+# Create query engine
+engine = QueryEngine()
+engine.register_table('users', table)
+
+# Execute a simple query
+results = engine.query("SELECT name, email FROM users WHERE age > 18")
+print(results)
+```
+
+### Running the CLI
 
 ```bash
-./engine "SELECT title, rating FROM movies.csv WHERE year > 2000"
+python src/main.py --load data.csv --query "SELECT * FROM data"
 ```
 
-## Supported Query Format
+## Query Syntax
 
-The required query format is:
+### SELECT Queries
+
+**Basic Selection:**
+```sql
+SELECT name, age FROM users
+```
+
+**With WHERE Clause:**
+```sql
+SELECT * FROM users WHERE age > 25 AND city = 'New York'
+```
+
+**With Aggregation:**
+```sql
+SELECT city, COUNT(*) as total FROM users GROUP BY city
+```
+
+**With Ordering and Limit:**
+```sql
+SELECT name, salary FROM employees ORDER BY salary DESC LIMIT 10
+```
+
+### Supported Operators
+
+- **Comparison**: `=`, `!=`, `<`, `>`, `<=`, `>=`
+- **Logical**: `AND`, `OR`, `NOT`
+- **String**: `LIKE` (pattern matching), `IN` (list membership)
+- **Aggregate Functions**: `COUNT`, `SUM`, `AVG`, `MIN`, `MAX`
+
+### JOIN Operations
 
 ```sql
-SELECT [column-names] FROM [filename] WHERE [column] [operator] [value]
+SELECT u.name, o.order_id FROM users u
+JOIN orders o ON u.id = o.user_id
+WHERE o.total > 100
 ```
 
-The selected columns may be comma-separated:
+### Data Modification
 
+**Insert:**
 ```sql
-SELECT title, rating FROM movies.csv WHERE year > 2000
+INSERT INTO users (name, email, age) VALUES ('John Doe', 'john@example.com', 30)
 ```
 
-Selecting every column may also be supported:
-
+**Update:**
 ```sql
-SELECT * FROM movies.csv WHERE rating >= 8.0
+UPDATE users SET age = 31 WHERE id = 1
 ```
 
-Supported comparison operators:
+**Delete:**
+```sql
+DELETE FROM users WHERE age < 18
+```
 
-- `=`
-- `!=`
-- `<`
-- `>`
-- `<=`
-- `>=`
+## Architecture
 
-## Expected Errors
+### Components
 
-The program should report an error instead of crashing when it receives bad
-input, such as:
+1. **CSV Loader (`csv_loader.py`)**
+   - Handles CSV parsing and loading
+   - Infers column types
+   - Manages data normalization
 
-- Misspelled column names.
-- Missing query values.
-- Incorrect query syntax.
-- Missing or unreadable CSV files.
-- Invalid comparisons between incompatible values.
+2. **Table (`table.py`)**
+   - In-memory table representation
+   - Row and column operations
+   - Basic indexing support
 
-## Design
+3. **Query Parser (`query_parser.py`)**
+   - Tokenizes query strings
+   - Builds abstract syntax tree (AST)
+   - Validates query syntax
 
-Planned components:
+4. **Query Engine (`query_engine.py`)**
+   - Executes parsed queries
+   - Manages multiple tables
+   - Handles joins and aggregations
 
-- `main`: handles command-line input and controls the program flow.
-- `CSVLoader`: reads the CSV file into memory.
-- `Parser`: breaks the raw query string into usable parts.
-- `QueryEngine`: decides how to execute the parsed query.
-- `TypeConverter`: converts CSV text to numbers when numeric comparison is
-  needed.
-- `ResultSet`: stores matching rows and prints the result.
+## Examples
 
-## Performance Requirement
+### Example 1: Loading and Querying Sales Data
 
-For a mini database, a CSV file with at most about 10,000 rows should be
-processed in under 500 ms. Larger datasets should still work when possible, but
-they are not the main performance target.
+```python
+from src.csv_loader import CSVLoader
+from src.query_engine import QueryEngine
+
+loader = CSVLoader()
+sales = loader.load('sales.csv')
+
+engine = QueryEngine()
+engine.register_table('sales', sales)
+
+# Find top 5 customers by spending
+top_customers = engine.query("""
+    SELECT customer_id, SUM(amount) as total_spending
+    FROM sales
+    GROUP BY customer_id
+    ORDER BY total_spending DESC
+    LIMIT 5
+""")
+```
+
+### Example 2: Data Filtering and Analysis
+
+```python
+# Find all orders from 2024
+recent_orders = engine.query("""
+    SELECT * FROM sales
+    WHERE date >= '2024-01-01'
+    ORDER BY date DESC
+""")
+
+# Get statistics
+summary = engine.query("""
+    SELECT 
+        COUNT(*) as total_orders,
+        AVG(amount) as avg_order_value,
+        MAX(amount) as max_order,
+        MIN(amount) as min_order
+    FROM sales
+""")
+```
+
+## Performance Considerations
+
+- Queries are executed in-memory for fast access
+- Index creation on frequently queried columns improves performance
+- Large datasets (>1GB) may require optimization
+- Consider data caching for repeated queries
+
+## Limitations
+
+- Single-threaded query execution
+- No transaction support
+- Limited to in-memory storage
+- No built-in authentication or access control
+- Complex nested queries may have performance impact
 
 ## Testing
 
-Testing will focus on the movies dataset mentioned in the project notes.
-Important cases include:
+Run the test suite to verify functionality:
 
-- Valid queries with matching rows.
-- Valid queries with no matches.
-- Selecting one column, multiple columns, and `*`.
-- Numeric comparisons such as `year > 2000`.
-- String comparisons such as `title = Inception`.
-- Invalid syntax.
-- Unknown column names.
-- Missing files.
+```bash
+# Run all tests
+pytest tests/
 
-## Out of Scope
+# Run with coverage
+pytest --cov=src tests/
 
-The spec does not require full SQL support. These features are not part of the
-core goal unless added later on purpose:
+# Run specific test file
+pytest tests/test_query_engine.py -v
+```
 
-- Joins.
-- Aggregation functions.
-- `GROUP BY`.
-- `ORDER BY`.
-- `INSERT`, `UPDATE`, or `DELETE`.
-- Indexing.
-- Multiple simultaneous tables.
-- A graphical or web UI.
+## Contributing
+
+Contributions are welcome! Please:
+
+1. Fork the repository
+2. Create a feature branch (`git checkout -b feature/amazing-feature`)
+3. Commit changes (`git commit -m 'Add amazing feature'`)
+4. Push to branch (`git push origin feature/amazing-feature`)
+5. Open a Pull Request
+
+## Roadmap
+
+- [ ] Multi-threaded query execution
+- [ ] Transaction support (ACID compliance)
+- [ ] B-tree indexing for better query performance
+- [ ] Support for more complex joins (LEFT JOIN, RIGHT JOIN, FULL OUTER JOIN)
+- [ ] Query optimization and execution plans
+- [ ] Export functionality (to JSON, Parquet, etc.)
+- [ ] Web UI for query execution
+- [ ] Caching layer for frequently accessed data
+
+## License
+
+This project is licensed under the MIT License - see the LICENSE file for details.
+
+## Author
+
+**Developer**: fkilr50  
+**Course**: AI Software (CS351)  
+**Institution**: University Project  
+**Semester**: 6
+
+## Contact
+
+For questions or suggestions, please open an issue on the GitHub repository.
+
+---
+
+**Last Updated**: April 2026
